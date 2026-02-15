@@ -1,55 +1,37 @@
 //frontend/src/App.jsx
 import './App.css';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import AuthScreen from './pages/AuthScreen';
 import Dashboard from './pages/Dashboard';
 import Wallet from './pages/Wallet';
 import Personal from './pages/Personal';
 import Settings from './pages/Settings';
+import RootLayout from './layouts/RootLayout';
 import ProtectedRoute from './components/ProtectedRoute';
-import Layout from './components/Layout';
-
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Public routes - no sidebar */}
         <Route path="/" element={<AuthScreen />} />
 
-        <Route element={<Layout />}>
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/wallet"
-            element={
-              <ProtectedRoute>
-                <Wallet />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/personal"
-            element={
-              <ProtectedRoute>
-                <Personal />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
+        {/* Protected routes - with sidebar via RootLayout */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <RootLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/personal" element={<Personal />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
+
+        {/* Catch all - redirect to dashboard */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   );

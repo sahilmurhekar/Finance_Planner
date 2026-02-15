@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import api from "../lib/axios";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { useUserStore } from "../store/useUserStore";
 
 const AuthScreen = () => {
     const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -11,6 +12,9 @@ const AuthScreen = () => {
     const [showCode, setShowCode] = useState(false);
     const inputRefs = useRef([]);
     const navigate = useNavigate();
+    const { fetchProfile } = useUserStore();
+
+
 
     // Handle individual digit input
     const handleInput = (index, value) => {
@@ -53,7 +57,6 @@ const AuthScreen = () => {
         }
     };
 
-    // Submit handler
     const handleSubmit = async (e) => {
         e.preventDefault();
         const fullCode = code.join('');
@@ -64,11 +67,15 @@ const AuthScreen = () => {
         }
 
         setIsSubmitting(true);
-        setError(''); // clear previous error only on new attempt
+        setError('');
 
         try {
             const res = await api.post("/auth/validate-pin", { pin: fullCode });
             localStorage.setItem("token", res.data.token);
+
+            // ADDED: Fetch user profile after successful PIN
+            await fetchProfile();
+
             setSuccess(true);
 
             setTimeout(() => {
@@ -77,18 +84,18 @@ const AuthScreen = () => {
         } catch (err) {
             const errorMsg = err.response?.data?.message || "Invalid PIN. Please try again.";
             setError(errorMsg);
-            // Do not clear code on error to allow user to edit; focus on first input only if needed
             inputRefs.current[0]?.focus();
         } finally {
             setIsSubmitting(false);
         }
     };
 
+
     const isFilled = code.every(digit => digit !== '');
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background blobs ... (kept unchanged) */}
+            {/* Background blobs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-20 right-40 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
                 <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
@@ -96,7 +103,7 @@ const AuthScreen = () => {
             </div>
 
             <div className="w-full max-w-md z-10">
-                {/* Header – unchanged */}
+                {/* Header */}
                 <div className="text-center mb-12 animate-fade-in">
                     <div className="mb-8 relative">
                         <div className="inline-block">
@@ -154,7 +161,7 @@ const AuthScreen = () => {
                         </div>
                     </div>
 
-                    {/* Error message – persists until manual dismiss or next successful submit */}
+                    {/* Error message */}
                     {error && (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 animate-shake">
                             <div className="flex items-start gap-3">
@@ -208,7 +215,7 @@ const AuthScreen = () => {
                 </form>
             </div>
 
-            {/* Keep your animations / styles – unchanged */}
+            {/* Animations */}
             <style>{`
         @keyframes blob {
           0%, 100% { transform: translate(0, 0) scale(1); }
