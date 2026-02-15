@@ -7,6 +7,7 @@ import Wallet from './pages/Wallet';
 import Personal from './pages/Personal';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
 
 
 function App() {
@@ -14,38 +15,41 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<AuthScreen />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/wallet"
-          element={
-            <ProtectedRoute>
-              <Wallet />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/personal"
-          element={
-            <ProtectedRoute>
-              <Personal />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
+
+        <Route element={<Layout />}>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wallet"
+            element={
+              <ProtectedRoute>
+                <Wallet />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personal"
+            element={
+              <ProtectedRoute>
+                <Personal />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
       </Routes>
     </Router>
   );
