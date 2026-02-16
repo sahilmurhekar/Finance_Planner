@@ -30,7 +30,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
         </Route>
 
-        {/* Catch all - redirect to dashboard */}
+        {/* Catch all */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
