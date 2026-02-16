@@ -1,4 +1,4 @@
-//backend/server.js (UPDATED)
+//backend/server.js (UPDATED WITH DASHBOARD ROUTES)
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -8,6 +8,9 @@ import userRoutes from "./routes/user.js";
 import expenseRoutes from "./routes/expenses.js";
 import categoryRoutes from "./routes/categories.js";
 import statsRoutes from "./routes/stats.js";
+import mutualFundRoutes from "./routes/mutualFunds.js";
+import cryptoRoutes from "./routes/crypto.js";
+import dashboardRoutes from "./routes/dashboard.js";
 import { verifyJWT } from "./middleware/auth.js";
 
 dotenv.config();
@@ -52,6 +55,9 @@ protectedRouter.use("/user", userRoutes);
 protectedRouter.use("/expenses", expenseRoutes);
 protectedRouter.use("/categories", categoryRoutes);
 protectedRouter.use("/stats", statsRoutes);
+protectedRouter.use("/mutual-funds", mutualFundRoutes);
+protectedRouter.use("/crypto", cryptoRoutes);
+protectedRouter.use("/dashboard", dashboardRoutes);
 
 app.use("/api", protectedRouter);
 
