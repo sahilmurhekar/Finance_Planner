@@ -1,6 +1,7 @@
-//backend/utils/binanceCache.js
+//backend/utils/binanceCache.js (UPDATED WITH API KEYS)
 import NodeCache from "node-cache";
 import axios from "axios";
+import crypto from "crypto";
 
 // Cache for 60 seconds
 const priceCache = new NodeCache({ stdTTL: 60 });
@@ -8,10 +9,22 @@ const priceCache = new NodeCache({ stdTTL: 60 });
 const BINANCE_API = "https://api.binance.com/api/v3";
 const COINGECKO_API = "https://api.coingecko.com/api/v3";
 
+// Binance API credentials from env
+const BINANCE_API_KEY = process.env.BINANCE_API_KEY;
+const BINANCE_SECRET = process.env.BINANCE_SECRET;
+
 /**
- * Get crypto price from Binance with caching
- * @param {string} symbol - Trading pair (e.g., "BTCUSDT")
- * @returns {Promise<number>} - Current price
+ * Generate Binance API signature
+ */
+const generateSignature = (queryString) => {
+    return crypto
+        .createHmac("sha256", BINANCE_SECRET)
+        .update(queryString)
+        .digest("hex");
+};
+
+/**
+ * Get crypto price from Binance with caching (PUBLIC - NO AUTH)
  */
 export const getBinancePrice = async (symbol) => {
     const cacheKey = `binance_${symbol}`;
@@ -37,9 +50,7 @@ export const getBinancePrice = async (symbol) => {
 };
 
 /**
- * Get multiple crypto prices at once
- * @param {string[]} symbols - Array of trading pairs
- * @returns {Promise<Object>} - Object with symbol: price mapping
+ * Get multiple crypto prices at once (PUBLIC - NO AUTH)
  */
 export const getMultipleBinancePrices = async (symbols) => {
     try {
@@ -57,9 +68,49 @@ export const getMultipleBinancePrices = async (symbols) => {
 };
 
 /**
+ * Get Binance Spot Account Balances (PRIVATE - REQUIRES API KEY)
+ * This fetches your actual holdings from Binance
+ */
+export const getBinanceSpotBalances = async () => {
+    if (!BINANCE_API_KEY || !BINANCE_SECRET) {
+        throw new Error("Binance API credentials not configured");
+    }
+
+    try {
+        const timestamp = Date.now();
+        const queryString = `timestamp=${timestamp}`;
+        const signature = generateSignature(queryString);
+
+        const response = await axios.get(`${BINANCE_API}/account`, {
+            params: {
+                timestamp,
+                signature,
+            },
+            headers: {
+                "X-MBX-APIKEY": BINANCE_API_KEY,
+            },
+            timeout: 10000,
+        });
+
+        // Filter out zero balances
+        const balances = response.data.balances.filter(
+            (balance) => parseFloat(balance.free) > 0 || parseFloat(balance.locked) > 0
+        );
+
+        return balances.map((balance) => ({
+            asset: balance.asset,
+            free: parseFloat(balance.free),
+            locked: parseFloat(balance.locked),
+            total: parseFloat(balance.free) + parseFloat(balance.locked),
+        }));
+    } catch (error) {
+        console.error("Binance account balances error:", error.response?.data || error.message);
+        throw new Error("Failed to fetch Binance balances");
+    }
+};
+
+/**
  * Get crypto price from CoinGecko (fallback)
- * @param {string} coinId - CoinGecko coin ID (e.g., "bitcoin")
- * @returns {Promise<number>} - Current price in USD
  */
 export const getCoinGeckoPrice = async (coinId) => {
     const cacheKey = `coingecko_${coinId}`;
@@ -89,8 +140,6 @@ export const getCoinGeckoPrice = async (coinId) => {
 
 /**
  * Get Mutual Fund NAV from MFApi.in
- * @param {string} schemeCode - MF scheme code
- * @returns {Promise<number>} - Current NAV
  */
 export const getMutualFundNAV = async (schemeCode) => {
     const cacheKey = `mf_${schemeCode}`;

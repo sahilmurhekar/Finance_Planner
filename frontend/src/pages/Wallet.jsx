@@ -1,256 +1,209 @@
 //frontend/src/pages/Wallet.jsx
 import React, { useEffect, useState } from 'react';
-import { Copy, LogOut, Loader, ExternalLink, RotateCw } from 'lucide-react';
-import QR from 'qrcode';
+import { RotateCw, TrendingUp, TrendingDown, Search, AlertCircle } from 'lucide-react';
 import { useWalletStore } from '../store/useWalletStore';
 
 const Wallet = () => {
   const {
-    address,
-    isConnected,
-    isConnecting,
-    chainName,
-    nativeBalance,
-    tokenBalances,
-    error,
+    holdings,
+    totalUsdValue,
     isLoading,
-    connectWallet,
-    disconnectWallet,
+    error,
+    lastUpdated,
+    fetchHoldings,
     clearError,
-    refreshBalances,
   } = useWalletStore();
 
-  const [copiedAddress, setCopiedAddress] = useState(false);
-  const [showQR, setShowQR] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (isConnected && !nativeBalance) {
-      refreshBalances();
-    }
-  }, [isConnected, nativeBalance]);
+    fetchHoldings();
+  }, []);
 
-  // Generate QR code when showQR or address changes
-  useEffect(() => {
-    if (showQR && address) {
-      QR.toDataURL(address, {
-        errorCorrectionLevel: 'H',
-        type: 'image/png',
-        quality: 0.95,
-        margin: 1,
-        width: 256,
-      })
-        .then(setQrDataUrl)
-        .catch((err) => console.error('QR Code generation error:', err));
-    }
-  }, [showQR, address]);
+  // Filter holdings by search
+  const filtered = holdings.filter((h) =>
+    h.asset.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const copyAddress = async () => {
-    if (!address) return;
-    try {
-      await navigator.clipboard.writeText(address);
-      setCopiedAddress(true);
-      setTimeout(() => setCopiedAddress(false), 2000);
-    } catch (err) {
-      console.error('Copy failed:', err);
-    }
+  const formatUsd = (val) =>
+    val >= 0.01
+      ? `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : `<$0.01`;
+
+  const formatQty = (val) => {
+    const n = Number(val);
+    if (n === 0) return '0';
+    if (n < 0.0001) return n.toExponential(4);
+    return n.toLocaleString('en-US', { maximumFractionDigits: 6 });
   };
 
-  const truncateAddress = (addr) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-
-  const openEtherscan = () => {
-    if (address) {
-      window.open(`https://etherscan.io/address/${address}`, '_blank');
-    }
-  };
-
-  // NOT CONNECTED VIEW
-  if (!isConnected) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Wallet</h1>
-            <p className="text-gray-600">Connect your MetaMask wallet</p>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex justify-between items-center">
-              <p className="text-sm text-red-800">{error}</p>
-              <button
-                onClick={clearError}
-                className="text-red-600 hover:text-red-800 font-bold text-lg"
-              >
-                ×
-              </button>
-            </div>
-          )}
-
-          <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
-            <div className="mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-full mx-auto mb-3 flex items-center justify-center">
-                <span className="text-3xl">🦊</span>
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Connect MetaMask</h2>
-              <p className="text-gray-600 text-sm">
-                Click the button below to connect your MetaMask wallet and view your assets.
-              </p>
-            </div>
-
-            <button
-              onClick={connectWallet}
-              disabled={isConnecting}
-              className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 mx-auto text-sm"
-            >
-              {isConnecting ? (
-                <>
-                  <Loader className="w-4 h-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>Connect MetaMask</>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // CONNECTED VIEW
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
+
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Wallet</h1>
-          <p className="text-gray-600">Your MetaMask wallet</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Crypto Holdings</h1>
+            <p className="text-gray-500 text-sm">
+              Fetched from your Binance Spot account
+              {lastUpdated && (
+                <span className="ml-2 text-gray-400">
+                  · Last updated {new Date(lastUpdated).toLocaleTimeString()}
+                </span>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={fetchHoldings}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg transition text-sm"
+          >
+            <RotateCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
 
+        {/* Error Banner */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex justify-between items-center">
-            <p className="text-sm text-red-800">{error}</p>
-            <button onClick={clearError} className="text-red-600 hover:text-red-800 font-bold text-lg">
+          <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">Failed to fetch holdings</p>
+                <p className="text-sm text-red-700 mt-0.5">{error}</p>
+              </div>
+            </div>
+            <button
+              onClick={clearError}
+              className="text-red-500 hover:text-red-700 font-bold text-lg leading-none"
+            >
               ×
             </button>
           </div>
         )}
 
-        <div className="space-y-4">
-          {/* Address Card */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm mb-1">Connected Wallet</p>
-                <p className="text-gray-900 text-lg font-bold font-mono">{truncateAddress(address)}</p>
-                <p className="text-gray-600 text-sm mt-1">
-                  Network: <span className="text-blue-600 font-semibold">{chainName}</span>
-                </p>
-              </div>
-              <div className="flex gap-1">
-                <button
-                  onClick={copyAddress}
-                  className={`p-2 rounded transition ${copiedAddress
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                    }`}
-                  title="Copy address"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={openEtherscan}
-                  className="p-2 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 transition"
-                  title="View on Etherscan"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={disconnectWallet}
-                  className="p-2 rounded bg-red-50 hover:bg-red-100 text-red-600 transition"
-                  title="Disconnect"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            {copiedAddress && <p className="text-green-600 text-xs mt-1">✓ Address copied</p>}
+        {/* Total Portfolio Value Card */}
+        {totalUsdValue > 0 && (
+          <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-xl p-6 mb-6 shadow-sm">
+            <p className="text-yellow-900 text-sm font-medium mb-1">Total Portfolio Value</p>
+            <p className="text-4xl font-bold text-black">
+              {formatUsd(totalUsdValue)}
+            </p>
+            <p className="text-yellow-800 text-sm mt-1">
+              {holdings.length} asset{holdings.length !== 1 ? 's' : ''} with balance
+            </p>
           </div>
+        )}
 
-          {/* QR Code */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="w-full text-left flex items-center justify-between p-3 hover:bg-gray-50 rounded transition"
-            >
-              <h3 className="text-base font-semibold text-gray-900">Receive Funds</h3>
-              <span className={`transform transition ${showQR ? 'rotate-180' : ''}`}>▼</span>
-            </button>
-
-            {showQR && (
-              <div className="p-4 bg-gray-50 rounded mt-3 flex flex-col items-center">
-                <p className="text-gray-600 text-xs mb-3">Scan to send funds to this address</p>
-                <div className="bg-white p-2 rounded mb-2">
-                  {qrDataUrl && (
-                    <img src={qrDataUrl} alt="QR Code" style={{ width: 200, height: 200 }} />
-                  )}
-                </div>
-                <p className="text-gray-600 text-xs text-center break-all font-mono">{address}</p>
-              </div>
-            )}
-          </div>
-
-          {/* ETH Balance */}
-          {nativeBalance && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">ETH Balance</p>
-                  <p className="text-3xl font-bold text-gray-900">{nativeBalance} ETH</p>
-                </div>
-                <button
-                  onClick={refreshBalances}
-                  disabled={isLoading}
-                  className="p-2 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 transition disabled:opacity-50"
-                  title="Refresh"
-                >
-                  <RotateCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Token Balances */}
-          {tokenBalances.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 className="text-base font-semibold text-gray-900 mb-3">Token Balances</h3>
-              <div className="space-y-2">
-                {tokenBalances.map((token) => (
-                  <div
-                    key={token.address}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition"
-                  >
+        {/* Loading skeleton */}
+        {isLoading && holdings.length === 0 && (
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full" />
                     <div>
-                      <p className="text-gray-900 font-semibold">{token.symbol}</p>
-                      <p className="text-gray-600 text-xs">{token.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-900 font-mono font-semibold">{token.balance}</p>
-                      <p className="text-gray-600 text-xs">{token.symbol}</p>
+                      <div className="h-4 bg-gray-200 rounded w-16 mb-1" />
+                      <div className="h-3 bg-gray-100 rounded w-24" />
                     </div>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <div className="h-4 bg-gray-200 rounded w-20 mb-1" />
+                    <div className="h-3 bg-gray-100 rounded w-14" />
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+        )}
 
-          {tokenBalances.length === 0 && nativeBalance && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-gray-600 text-sm">No token balances found. You only have ETH.</p>
+        {/* Holdings List */}
+        {!isLoading || holdings.length > 0 ? (
+          <>
+            {/* Search bar */}
+            {holdings.length > 5 && (
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search asset…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+                />
+              </div>
+            )}
+
+            {filtered.length === 0 && !isLoading && !error && (
+              <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+                <p className="text-gray-500 text-sm">
+                  {holdings.length === 0
+                    ? 'No holdings found in your Binance Spot account.'
+                    : 'No assets match your search.'}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {filtered.map((h) => (
+                <div
+                  key={h.asset}
+                  className="bg-white border border-gray-200 rounded-lg p-4 hover:border-yellow-300 hover:shadow-sm transition"
+                >
+                  <div className="flex items-center justify-between">
+                    {/* Left: icon + name */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-700 text-sm">
+                        {h.asset.slice(0, 3)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{h.asset}</p>
+                        <p className="text-gray-500 text-xs">
+                          Qty: <span className="font-mono">{formatQty(h.free)}</span>
+                          {Number(h.locked) > 0 && (
+                            <span className="ml-2 text-orange-500">
+                              +{formatQty(h.locked)} locked
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right: USD value + price */}
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">{formatUsd(h.usdValue)}</p>
+                      {h.price && (
+                        <p className="text-gray-400 text-xs">
+                          @ {formatUsd(h.price)} / {h.asset}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress bar: % of portfolio */}
+                  {totalUsdValue > 0 && (
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">Portfolio share</span>
+                        <span className="text-xs text-gray-500 font-medium">
+                          {((h.usdValue / totalUsdValue) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div
+                          className="bg-yellow-400 h-1.5 rounded-full"
+                          style={{ width: `${Math.min((h.usdValue / totalUsdValue) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+          </>
+        ) : null}
       </div>
     </div>
   );

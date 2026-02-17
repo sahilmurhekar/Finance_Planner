@@ -1,4 +1,4 @@
-//backend/server.js (UPDATED WITH DASHBOARD ROUTES)
+//backend/server.js (UPDATED WITH WALLET INTEGRATION)
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -11,6 +11,8 @@ import statsRoutes from "./routes/stats.js";
 import mutualFundRoutes from "./routes/mutualFunds.js";
 import cryptoRoutes from "./routes/crypto.js";
 import dashboardRoutes from "./routes/dashboard.js";
+import walletIntegrationRoutes from "./routes/walletIntegration.js";
+import binanceRoutes from "./routes/binance.js";
 import { verifyJWT } from "./middleware/auth.js";
 
 dotenv.config();
@@ -22,6 +24,11 @@ if (
 ) {
     console.error("Missing required env vars: JWT_SECRET, PIN_CODE, MONGODB_URI");
     process.exit(1);
+}
+
+// Warn if Binance API keys are missing (optional for some features)
+if (!process.env.BINANCE_API_KEY || !process.env.BINANCE_SECRET) {
+    console.warn("⚠️  Binance API credentials not set. Binance sync will not work.");
 }
 
 const app = express();
@@ -39,7 +46,7 @@ mongoose
     .connect(process.env.MONGODB_URI, {
         dbName: "FINANCE_DB",
     })
-    .then(() => console.log("✓ MongoDB connected to FINANCE_DB"))
+    .then(() => console.log("✔ MongoDB connected to FINANCE_DB"))
     .catch((err) => {
         console.error("MongoDB connection failed:", err);
         process.exit(1);
@@ -58,6 +65,8 @@ protectedRouter.use("/stats", statsRoutes);
 protectedRouter.use("/mutual-funds", mutualFundRoutes);
 protectedRouter.use("/crypto", cryptoRoutes);
 protectedRouter.use("/dashboard", dashboardRoutes);
+protectedRouter.use("/wallet-integration", walletIntegrationRoutes);
+protectedRouter.use("/binance", binanceRoutes);
 
 app.use("/api", protectedRouter);
 
@@ -69,4 +78,4 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✓ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✔ Server running on port ${PORT}`));
