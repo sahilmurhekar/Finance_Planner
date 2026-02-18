@@ -3,17 +3,17 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 
-import authRoutes from "../backend/routes/auth.js";
-import userRoutes from "../backend/routes/user.js";
-import expenseRoutes from "../backend/routes/expenses.js";
-import categoryRoutes from "../backend/routes/categories.js";
-import statsRoutes from "../backend/routes/stats.js";
-import mutualFundRoutes from "../backend/routes/mutualFunds.js";
-import cryptoRoutes from "../backend/routes/crypto.js";
-import dashboardRoutes from "../backend/routes/dashboard.js";
-import walletIntegrationRoutes from "../backend/routes/walletIntegration.js";
-import binanceRoutes from "../backend/routes/binance.js";
-import { verifyJWT } from "../backend/middleware/auth.js";
+import authRoutes from "../routes/auth.js";
+import userRoutes from "../routes/user.js";
+import expenseRoutes from "../routes/expenses.js";
+import categoryRoutes from "../routes/categories.js";
+import statsRoutes from "../routes/stats.js";
+import mutualFundRoutes from "../routes/mutualFunds.js";
+import cryptoRoutes from "../routes/crypto.js";
+import dashboardRoutes from "../routes/dashboard.js";
+import walletIntegrationRoutes from "../routes/walletIntegration.js";
+import binanceRoutes from "../routes/binance.js";
+import { verifyJWT } from "../middleware/auth.js";
 
 dotenv.config();
 
