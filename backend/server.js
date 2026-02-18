@@ -17,25 +17,11 @@ import { verifyJWT } from "./middleware/auth.js";
 
 dotenv.config();
 
-if (
-    !process.env.JWT_SECRET ||
-    !process.env.PIN_CODE ||
-    !process.env.MONGODB_URI
-) {
-    console.error("Missing required env vars: JWT_SECRET, PIN_CODE, MONGODB_URI");
-    process.exit(1);
-}
-
-// Warn if Binance API keys are missing (optional for some features)
-if (!process.env.BINANCE_API_KEY || !process.env.BINANCE_SECRET) {
-    console.warn("⚠️  Binance API credentials not set. Binance sync will not work.");
-}
-
 const app = express();
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:5173",
+        origin: process.env.FRONTEND_URL || "http://127.0.0.1:5173",
         credentials: true,
     })
 );
