@@ -130,10 +130,3 @@ Set environment variables on your deployment platform before deploying.
 4. Access app at `http://localhost:5173`
 5. Default PIN: `123456`
 
-## License
-
-MIT
-
----
-
-**Dashboard** | **Wallet** | **Expenses** | **Settings** | **Secure PIN Auth**
