@@ -27,7 +27,7 @@ export const useMutualFundStore = create((set, get) => ({
         }
     },
 
-    // Add mutual fund
+    // Add new mutual fund (lump-sum or initial setup)
     addMutualFund: async (fundData) => {
         set({ isLoading: true, error: null });
         try {
@@ -103,7 +103,7 @@ export const useMutualFundStore = create((set, get) => ({
         try {
             const res = await api.post("/mutual-funds/refresh-nav");
 
-            // Refetch all funds to get updated NAVs
+            // Refetch to get updated values
             await get().fetchMutualFunds();
 
             return res.data;
@@ -111,6 +111,31 @@ export const useMutualFundStore = create((set, get) => ({
             console.error("Error refreshing NAVs:", error);
             set({
                 error: error.response?.data?.error || "Failed to refresh NAVs",
+                isLoading: false,
+            });
+            throw error;
+        }
+    },
+
+    // NEW: Add SIP installment to an existing mutual fund
+    addSipInstallment: async (fundId, installmentData) => {
+        set({ isLoading: true, error: null });
+        try {
+            const res = await api.post(`/mutual-funds/${fundId}/installment`, installmentData);
+            const updatedFund = res.data.data;
+
+            set((state) => ({
+                mutualFunds: state.mutualFunds.map((fund) =>
+                    fund._id === fundId ? updatedFund : fund
+                ),
+                isLoading: false,
+            }));
+
+            return updatedFund;
+        } catch (error) {
+            console.error("Error adding SIP installment:", error);
+            set({
+                error: error.response?.data?.error || "Failed to add SIP installment",
                 isLoading: false,
             });
             throw error;

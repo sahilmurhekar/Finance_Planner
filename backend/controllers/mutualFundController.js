@@ -8,7 +8,6 @@ export const getMutualFunds = async (req, res) => {
     try {
         const funds = await MutualFund.find().sort({ createdAt: -1 });
 
-        // Fetch current NAV for each fund
         const fundsWithNAV = await Promise.all(
             funds.map(async (fund) => {
                 try {
@@ -22,39 +21,27 @@ export const getMutualFunds = async (req, res) => {
             })
         );
 
-        res.json({
-            success: true,
-            data: fundsWithNAV,
-        });
+        res.json({ success: true, data: fundsWithNAV });
     } catch (error) {
         console.error(error);
-        res.status(500).json({
-            success: false,
-            error: "Error fetching mutual funds",
-        });
+        res.status(500).json({ success: false, error: "Error fetching mutual funds" });
     }
 };
 
 // Create new mutual fund
+// Only fund_name and scheme_code are required.
+// invested_amount and units default to 0 — SIP installments will populate them.
 export const createMutualFund = async (req, res) => {
     try {
-        const {
-            fund_name,
-            scheme_code,
-            invested_amount,
-            units,
-            expected_value,
-            purchase_date,
-        } = req.body;
+        const { fund_name, scheme_code, invested_amount, units, expected_value, purchase_date } = req.body;
 
-        if (!fund_name || !scheme_code || !invested_amount || !units) {
+        if (!fund_name || !scheme_code) {
             return res.status(400).json({
                 success: false,
-                error: "Fund name, scheme code, invested amount, and units are required",
+                error: "Fund name and scheme code are required",
             });
         }
 
-        // Fetch current NAV
         let current_nav = 0;
         try {
             current_nav = await getMutualFundNAV(scheme_code);
@@ -65,26 +52,19 @@ export const createMutualFund = async (req, res) => {
         const fund = new MutualFund({
             fund_name,
             scheme_code,
-            invested_amount: parseFloat(invested_amount),
-            units: parseFloat(units),
+            invested_amount: invested_amount ? parseFloat(invested_amount) : 0,
+            units: units ? parseFloat(units) : 0,
             current_nav,
             expected_value: expected_value ? parseFloat(expected_value) : 0,
-            purchase_date: purchase_date || Date.now(),
+            purchase_date: purchase_date ? new Date(purchase_date) : new Date(),
         });
 
         await fund.save();
 
-        res.status(201).json({
-            success: true,
-            data: fund,
-            message: "Mutual fund added successfully",
-        });
+        res.status(201).json({ success: true, data: fund, message: "Mutual fund created successfully" });
     } catch (error) {
         console.error(error);
-        res.status(500).json({
-            success: false,
-            error: "Error creating mutual fund",
-        });
+        res.status(500).json({ success: false, error: "Error creating mutual fund" });
     }
 };
 
@@ -92,65 +72,37 @@ export const createMutualFund = async (req, res) => {
 export const updateMutualFund = async (req, res) => {
     try {
         const { id } = req.params;
-        const {
-            fund_name,
-            scheme_code,
-            invested_amount,
-            units,
-            expected_value,
-            purchase_date,
-        } = req.body;
+        const { fund_name, scheme_code, invested_amount, units, expected_value, purchase_date } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid fund ID",
-            });
+            return res.status(400).json({ success: false, error: "Invalid fund ID" });
         }
 
         const updates = {};
         if (fund_name !== undefined) updates.fund_name = fund_name;
         if (scheme_code !== undefined) updates.scheme_code = scheme_code;
-        if (invested_amount !== undefined)
-            updates.invested_amount = parseFloat(invested_amount);
+        if (invested_amount !== undefined) updates.invested_amount = parseFloat(invested_amount);
         if (units !== undefined) updates.units = parseFloat(units);
-        if (expected_value !== undefined)
-            updates.expected_value = parseFloat(expected_value);
-        if (purchase_date !== undefined) updates.purchase_date = purchase_date;
+        if (expected_value !== undefined) updates.expected_value = parseFloat(expected_value);
+        if (purchase_date !== undefined) updates.purchase_date = new Date(purchase_date);
 
-        // Fetch latest NAV if scheme_code changed
-        if (scheme_code) {
-            try {
-                const current_nav = await getMutualFundNAV(scheme_code);
-                updates.current_nav = current_nav;
-            } catch (error) {
-                console.warn("Could not fetch updated NAV");
-            }
-        }
-
-        const fund = await MutualFund.findByIdAndUpdate(id, updates, {
-            new: true,
-            runValidators: true,
-        });
+        const fund = await MutualFund.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
 
         if (!fund) {
-            return res.status(404).json({
-                success: false,
-                error: "Mutual fund not found",
-            });
+            return res.status(404).json({ success: false, error: "Mutual fund not found" });
         }
 
-        res.json({
-            success: true,
-            data: fund,
-            message: "Mutual fund updated successfully",
-        });
+        try {
+            fund.current_nav = await getMutualFundNAV(fund.scheme_code);
+            await fund.save();
+        } catch (error) {
+            console.warn(`Failed to refresh NAV for ${fund.fund_name}`);
+        }
+
+        res.json({ success: true, data: fund, message: "Mutual fund updated successfully" });
     } catch (error) {
         console.error(error);
-        res.status(500).json({
-            success: false,
-            error: "Error updating mutual fund",
-        });
+        res.status(500).json({ success: false, error: "Error updating mutual fund" });
     }
 };
 
@@ -160,31 +112,19 @@ export const deleteMutualFund = async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid fund ID",
-            });
+            return res.status(400).json({ success: false, error: "Invalid fund ID" });
         }
 
         const fund = await MutualFund.findByIdAndDelete(id);
 
         if (!fund) {
-            return res.status(404).json({
-                success: false,
-                error: "Mutual fund not found",
-            });
+            return res.status(404).json({ success: false, error: "Mutual fund not found" });
         }
 
-        res.json({
-            success: true,
-            message: "Mutual fund deleted successfully",
-        });
+        res.json({ success: true, message: "Mutual fund deleted successfully" });
     } catch (error) {
         console.error(error);
-        res.status(500).json({
-            success: false,
-            error: "Error deleting mutual fund",
-        });
+        res.status(500).json({ success: false, error: "Error deleting mutual fund" });
     }
 };
 
@@ -206,16 +146,57 @@ export const refreshAllNAVs = async (req, res) => {
             })
         );
 
-        res.json({
-            success: true,
-            message: "NAV refresh completed",
-            results: updates,
-        });
+        res.json({ success: true, message: "NAV refresh completed", results: updates });
     } catch (error) {
         console.error(error);
-        res.status(500).json({
-            success: false,
-            error: "Error refreshing NAVs",
-        });
+        res.status(500).json({ success: false, error: "Error refreshing NAVs" });
+    }
+};
+
+// Add SIP installment to existing fund
+export const addSipInstallment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amount, purchase_nav, purchase_date } = req.body;
+
+        if (!amount || !purchase_nav) {
+            return res.status(400).json({
+                success: false,
+                error: "Amount and purchase NAV are required for SIP installment",
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, error: "Invalid fund ID" });
+        }
+
+        const fund = await MutualFund.findById(id);
+
+        if (!fund) {
+            return res.status(404).json({ success: false, error: "Mutual fund not found" });
+        }
+
+        const newUnits = parseFloat(amount) / parseFloat(purchase_nav);
+
+        // Accumulate totals — each SIP adds to invested_amount and units
+        fund.invested_amount += parseFloat(amount);
+        fund.units += newUnits;
+
+        if (purchase_date) {
+            fund.purchase_date = new Date(purchase_date);
+        }
+
+        try {
+            fund.current_nav = await getMutualFundNAV(fund.scheme_code);
+        } catch (error) {
+            console.warn(`Failed to refresh NAV for ${fund.fund_name}`);
+        }
+
+        await fund.save();
+
+        res.json({ success: true, data: fund, message: "SIP installment added successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, error: "Error adding SIP installment" });
     }
 };

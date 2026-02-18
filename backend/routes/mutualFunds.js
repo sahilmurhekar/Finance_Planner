@@ -6,6 +6,7 @@ import {
     updateMutualFund,
     deleteMutualFund,
     refreshAllNAVs,
+    addSipInstallment,
 } from "../controllers/mutualFundController.js";
 
 const router = express.Router();
@@ -24,5 +25,8 @@ router.delete("/:id", deleteMutualFund);
 
 // Refresh all NAVs
 router.post("/refresh-nav", refreshAllNAVs);
+
+// Add SIP installment
+router.post("/:id/installment", addSipInstallment);
 
 export default router;
