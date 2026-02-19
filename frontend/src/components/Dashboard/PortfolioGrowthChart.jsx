@@ -1,5 +1,5 @@
 //frontend/src/components/Dashboard/PortfolioGrowthChart.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
     AreaChart,
     Area,
@@ -14,13 +14,13 @@ import { useMutualFundStore } from "../../store/useMutualFundStore";
 import { useWalletStore } from "../../store/useWalletStore";
 
 const FILTERS = [
-    { label: "1D",  days: 1 },
-    { label: "1W",  days: 7 },
-    { label: "1M",  days: 30 },
-    { label: "6M",  days: 180 },
-    { label: "1Y",  days: 365 },
-    { label: "3Y",  days: 365 * 3 },
-    { label: "5Y",  days: 365 * 5 },
+    { label: "1D", days: 1 },
+    { label: "1W", days: 7 },
+    { label: "1M", days: 30 },
+    { label: "6M", days: 180 },
+    { label: "1Y", days: 365 },
+    { label: "3Y", days: 365 * 3 },
+    { label: "5Y", days: 365 * 5 },
 ];
 
 /**
@@ -142,12 +142,18 @@ const PortfolioGrowthChart = () => {
     const { mutualFunds } = useMutualFundStore();
     const { totalUsdValue } = useWalletStore();
     const [activeFilter, setActiveFilter] = useState("1M");
-    const [rate] = useState(() => {
-        // Use a cached rate; SummaryCards already fetches the live rate.
-        // Fallback to a reasonable default if not yet available.
-        return 83.5;
-    });
+
+    // ✅ FIX: Fetch live USD/INR rate from CoinGecko (same as SummaryCards)
+    // instead of using a hardcoded fallback of 83.5 which caused the discrepancy.
+    const [rate, setRate] = useState(83.5); // fallback default while fetching
     const [view, setView] = useState("total"); // "total" | "split"
+
+    useEffect(() => {
+        fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=inr')
+            .then(res => res.json())
+            .then(data => setRate(data.tether.inr))
+            .catch(err => console.error('Rate fetch failed, using fallback rate', err));
+    }, []);
 
     const filterDays = FILTERS.find(f => f.label === activeFilter)?.days ?? 30;
 
@@ -215,11 +221,10 @@ const PortfolioGrowthChart = () => {
                             <button
                                 key={f.label}
                                 onClick={() => setActiveFilter(f.label)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                                    activeFilter === f.label
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeFilter === f.label
                                         ? "bg-white text-gray-900 shadow-sm"
                                         : "text-gray-500 hover:text-gray-700"
-                                }`}
+                                    }`}
                             >
                                 {f.label}
                             </button>
@@ -232,11 +237,10 @@ const PortfolioGrowthChart = () => {
                             <button
                                 key={v}
                                 onClick={() => setView(v)}
-                                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all capitalize ${
-                                    view === v
+                                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all capitalize ${view === v
                                         ? "bg-white text-gray-900 shadow-sm"
                                         : "text-gray-500 hover:text-gray-700"
-                                }`}
+                                    }`}
                             >
                                 {v}
                             </button>
