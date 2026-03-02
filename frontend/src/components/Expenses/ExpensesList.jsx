@@ -1,4 +1,4 @@
-// frontend/src/components/Expenses/ExpensesList.jsx (UPDATED WITH FULL EDIT SUPPORT)
+// frontend/src/components/Expenses/ExpensesList.jsx (FIXED - Monthly + Daily support + Full Edit)
 
 import React, { useEffect, useState } from "react";
 import { useExpenseStore } from "../../store/useExpenseStore";
@@ -9,7 +9,7 @@ const ExpensesList = ({ selectedDate = null }) => {
         expenses,
         fetchExpenses,
         deleteExpense,
-        updateExpense,      // ← NEW (add this to your store if missing)
+        updateExpense,        // ← now used
         categories,
         fetchCategories,
         isLoading,
@@ -27,24 +27,24 @@ const ExpensesList = ({ selectedDate = null }) => {
     });
     const [error, setError] = useState("");
 
+    // Use month when we get YYYY-MM, use date when we get full YYYY-MM-DD
     const dateToShow = selectedDate || storeDate;
+    const isMonthView = dateToShow && dateToShow.length === 7;
 
     useEffect(() => {
-        fetchExpenses({ date: dateToShow });
-        fetchCategories();
-    }, [dateToShow, fetchExpenses, fetchCategories]);
+        if (!dateToShow) return;
 
-    const handleDelete = async (id) => {
-        try {
-            await deleteExpense(id);
-            setShowDeleteConfirm(null);
-        } catch (err) {
-            console.error("Failed to delete:", err);
+        console.log(`Fetching expenses → ${isMonthView ? "MONTH" : "DAY"}:`, dateToShow);
+
+        if (isMonthView) {
+            fetchExpenses({ month: dateToShow });
+        } else {
+            fetchExpenses({ date: dateToShow });
         }
-    };
+    }, [dateToShow, fetchExpenses]);
 
-    // ==================== EDIT HANDLERS ====================
-    const handleEditClick = (expense) => {
+    // ==================== EDIT ====================
+    const openEditModal = (expense) => {
         setEditingId(expense._id);
         setEditFormData({
             category: expense.category,
@@ -63,10 +63,8 @@ const ExpensesList = ({ selectedDate = null }) => {
 
     const handleUpdate = async (e) => {
         e.preventDefault();
-        setError("");
-
-        if (!editFormData.category || !editFormData.amount || parseFloat(editFormData.amount) <= 0) {
-            setError("Please select a category and enter a valid amount");
+        if (!editFormData.category || parseFloat(editFormData.amount) <= 0) {
+            setError("Category and valid amount required");
             return;
         }
 
@@ -77,37 +75,34 @@ const ExpensesList = ({ selectedDate = null }) => {
                 note: editFormData.note,
                 date: editFormData.date,
             });
-
             setShowEditModal(false);
             setEditingId(null);
-            setEditFormData({ category: "", amount: "", note: "", date: "" });
-
-            // Refresh the list (works for both daily & monthly views)
-            fetchExpenses({ date: dateToShow });
         } catch (err) {
-            setError(err.response?.data?.error || "Failed to update expense");
+            setError(err.response?.data?.error || "Update failed");
         }
     };
 
-    const handleCancelEdit = () => {
+    const closeEditModal = () => {
         setShowEditModal(false);
         setEditingId(null);
-        setEditFormData({ category: "", amount: "", note: "", date: "" });
         setError("");
     };
 
-    if (isLoading) {
-        return (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <p className="text-gray-500">Loading expenses...</p>
-            </div>
-        );
-    }
+    // ==================== DELETE ====================
+    const handleDelete = async (id) => {
+        try {
+            await deleteExpense(id);
+            setShowDeleteConfirm(null);
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
+    if (isLoading) return <div className="bg-white rounded-lg border border-gray-200 p-6">Loading expenses...</div>;
     if (expenses.length === 0) {
         return (
             <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
-                <p className="text-gray-500">No expenses for this period.</p>
+                <p className="text-gray-500">No expenses found for this {isMonthView ? "month" : "date"}.</p>
             </div>
         );
     }
@@ -126,28 +121,20 @@ const ExpensesList = ({ selectedDate = null }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {expenses.map((expense) => (
-                            <tr key={expense._id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 text-sm text-gray-900 font-medium">{expense.category}</td>
-                                <td className="px-6 py-4 text-sm text-gray-900 font-semibold">₹{expense.amount.toFixed(2)}</td>
-                                <td className="px-6 py-4 text-sm text-gray-600">{expense.note || "-"}</td>
-                                <td className="px-6 py-4 text-sm text-gray-600">
-                                    {new Date(expense.date).toLocaleDateString()}
+                        {expenses.map((exp) => (
+                            <tr key={exp._id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 font-medium">{exp.category}</td>
+                                <td className="px-6 py-4 font-semibold">₹{exp.amount.toFixed(2)}</td>
+                                <td className="px-6 py-4 text-gray-600">{exp.note || "-"}</td>
+                                <td className="px-6 py-4 text-gray-600">
+                                    {new Date(exp.date).toLocaleDateString("en-IN")}
                                 </td>
-                                <td className="px-6 py-4 text-sm flex gap-2">
-                                    <button
-                                        onClick={() => handleEditClick(expense)}
-                                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                                        title="Edit"
-                                    >
-                                        <Edit2 className="w-4 h-4" />
+                                <td className="px-6 py-4 flex gap-3">
+                                    <button onClick={() => openEditModal(exp)} title="Edit">
+                                        <Edit2 className="w-4 h-4 text-blue-600 hover:text-blue-800" />
                                     </button>
-                                    <button
-                                        onClick={() => setShowDeleteConfirm(expense._id)}
-                                        className="text-red-600 hover:text-red-800 transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
+                                    <button onClick={() => setShowDeleteConfirm(exp._id)} title="Delete">
+                                        <Trash2 className="w-4 h-4 text-red-600 hover:text-red-800" />
                                     </button>
                                 </td>
                             </tr>
@@ -156,22 +143,22 @@ const ExpensesList = ({ selectedDate = null }) => {
                 </table>
             </div>
 
-            {/* Delete Confirmation Modal (unchanged) */}
+            {/* Delete Modal */}
             {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Expense?</h3>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4">
+                        <h3 className="font-semibold mb-4">Delete Expense?</h3>
                         <p className="text-gray-600 mb-6">This action cannot be undone.</p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeleteConfirm(null)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={() => handleDelete(showDeleteConfirm)}
-                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                             >
                                 Delete
                             </button>
@@ -180,88 +167,73 @@ const ExpensesList = ({ selectedDate = null }) => {
                 </div>
             )}
 
-            {/* ==================== NEW EDIT MODAL ==================== */}
+            {/* Edit Modal */}
             {showEditModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Edit Expense</h3>
-                            <button onClick={handleCancelEdit} className="text-gray-400 hover:text-gray-600 text-xl">
-                                ✕
-                            </button>
-                        </div>
-
-                        {error && (
-                            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
-                                <p className="text-red-800 text-sm">{error}</p>
-                            </div>
-                        )}
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+                        <h3 className="text-lg font-semibold mb-4">Edit Expense</h3>
+                        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
                         <form onSubmit={handleUpdate} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                                <label className="block text-sm mb-1">Category</label>
                                 <select
                                     name="category"
                                     value={editFormData.category}
                                     onChange={handleEditChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full border rounded-lg p-2"
                                 >
-                                    <option value="">Select a category</option>
-                                    {categories.map((cat) => (
-                                        <option key={cat._id} value={cat.name}>
-                                            {cat.name}
-                                        </option>
+                                    {categories.map((c) => (
+                                        <option key={c._id} value={c.name}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Amount (₹)</label>
+                                <label className="block text-sm mb-1">Amount (₹)</label>
                                 <input
                                     type="number"
                                     name="amount"
                                     value={editFormData.amount}
                                     onChange={handleEditChange}
                                     step="0.01"
-                                    min="0"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full border rounded-lg p-2"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                                <label className="block text-sm mb-1">Date</label>
                                 <input
                                     type="date"
                                     name="date"
                                     value={editFormData.date}
                                     onChange={handleEditChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full border rounded-lg p-2"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Note (Optional)</label>
+                                <label className="block text-sm mb-1">Note</label>
                                 <textarea
                                     name="note"
                                     value={editFormData.note}
                                     onChange={handleEditChange}
                                     rows="3"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                    className="w-full border rounded-lg p-2"
                                 />
                             </div>
 
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="submit"
-                                    disabled={isLoading}
-                                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+                                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
                                 >
-                                    {isLoading ? "Updating..." : "Update Expense"}
+                                    Update Expense
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={handleCancelEdit}
-                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                    onClick={closeEditModal}
+                                    className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
                                 >
                                     Cancel
                                 </button>
