@@ -1,4 +1,4 @@
-//frontend/src/components/Dashboard/AssetAllocationChart.jsx
+// frontend/src/components/Dashboard/AssetAllocationChart.jsx
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
@@ -14,24 +14,18 @@ const AssetAllocationChart = ({ stats }) => {
         );
     }
 
-    const { mutual_funds, crypto } = stats.asset_allocation;
+    const mutual_funds = stats.asset_allocation.mutual_funds || { amount: 0, percentage: 0 };
 
     const data = [
         {
             name: "Mutual Funds",
             value: parseFloat(mutual_funds.amount),
-            percentage: parseFloat(mutual_funds.percentage),
-        },
-        {
-            name: "Crypto",
-            value: parseFloat(crypto.amount),
-            percentage: parseFloat(crypto.percentage),
+            percentage: parseFloat(mutual_funds.percentage) || 100,
         },
     ].filter((item) => item.value > 0);
 
     const COLORS = {
-        "Mutual Funds": "#3B82F6", // blue
-        Crypto: "#F59E0B", // orange
+        "Mutual Funds": "#3B82F6",
     };
 
     const CustomTooltip = ({ active, payload }) => {

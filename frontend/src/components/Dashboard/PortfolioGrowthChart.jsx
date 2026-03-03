@@ -1,4 +1,4 @@
-//frontend/src/components/Dashboard/PortfolioGrowthChart.jsx
+// frontend/src/components/Dashboard/PortfolioGrowthChart.jsx
 import React, { useState, useMemo, useEffect } from "react";
 import {
     AreaChart,
@@ -11,7 +11,6 @@ import {
     ReferenceLine,
 } from "recharts";
 import { useMutualFundStore } from "../../store/useMutualFundStore";
-import { useWalletStore } from "../../store/useWalletStore";
 
 const FILTERS = [
     { label: "1D", days: 1 },
@@ -23,24 +22,13 @@ const FILTERS = [
     { label: "5Y", days: 365 * 5 },
 ];
 
-/**
- * Generates synthetic daily gain data points by interpolating from
- * each fund's purchase_date to today, simulating a smooth growth curve.
- * In production you'd replace this with real historical NAV data from your backend.
- */
 function generateDataPoints(funds, days) {
     const today = new Date();
     const points = [];
 
     for (let i = days; i >= 0; i--) {
         const date = new Date(today);
-        date.offsetDay = i;
         date.setDate(today.getDate() - i);
-        const dayLabel = date;
-
-        // For each fund, calculate how much was invested by this date
-        // and estimate gain using a linear interpolation toward current gain
-        let mfInvested = 0;
         let mfGain = 0;
 
         funds.forEach((fund) => {
@@ -51,49 +39,37 @@ function generateDataPoints(funds, days) {
                 const nav = parseFloat(fund.current_nav) || 0;
                 const currentGain = units * nav - invested;
 
-                // How far through the fund's life is this date?
                 const fundAgeDays = Math.max(1, (today - purchaseDate) / (1000 * 60 * 60 * 24));
                 const pointAgeDays = Math.max(0, (date - purchaseDate) / (1000 * 60 * 60 * 24));
                 const progress = Math.min(1, pointAgeDays / fundAgeDays);
 
-                // Simulate S-curve growth: slow start, accelerating middle
                 const eased = progress < 0.5
                     ? 2 * progress * progress
                     : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-                mfInvested += invested;
                 mfGain += currentGain * eased;
             }
         });
 
-        const totalGain = mfGain;
-
         points.push({
-            date: dayLabel,
+            date,
             mfGain: parseFloat(mfGain.toFixed(2)),
-            totalGain: parseFloat(totalGain.toFixed(2)),
+            totalGain: parseFloat(mfGain.toFixed(2)),
         });
     }
-
     return points;
 }
 
 function formatDateLabel(date, days) {
-    if (days <= 1) {
-        return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-    } else if (days <= 30) {
-        return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-    } else if (days <= 365) {
-        return date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-    } else {
-        return date.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-    }
+    if (days <= 1) return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    if (days <= 30) return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    if (days <= 365) return date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+    return date.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 }
 
-// Thin out points to avoid overcrowded X-axis
 function samplePoints(points, days) {
     if (days <= 1) return points;
-    const maxPoints = days <= 7 ? points.length : days <= 30 ? 15 : days <= 180 ? 12 : 12;
+    const maxPoints = days <= 7 ? points.length : days <= 30 ? 15 : 12;
     if (points.length <= maxPoints) return points;
     const step = Math.ceil(points.length / maxPoints);
     return points.filter((_, i) => i % step === 0 || i === points.length - 1);
@@ -102,7 +78,6 @@ function samplePoints(points, days) {
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
     const total = payload.find(p => p.dataKey === "totalGain");
-    const mf = payload.find(p => p.dataKey === "mfGain");
     const isPos = (total?.value ?? 0) >= 0;
 
     return (
@@ -115,37 +90,25 @@ const CustomTooltip = ({ active, payload, label }) => {
             <p className={`text-base font-bold mb-2 ${isPos ? "text-green-400" : "text-red-400"}`}>
                 {isPos ? "+" : ""}₹{Math.abs(total?.value ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </p>
-            <div className="space-y-1 border-t border-gray-700 pt-2">
-                <div className="flex justify-between gap-4">
-                    <span className="text-blue-400 text-xs">Mutual Funds</span>
-                    <span className="text-xs font-medium">₹{(mf?.value ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                </div>
-                
-            </div>
         </div>
     );
 };
 
 const PortfolioGrowthChart = () => {
     const { mutualFunds } = useMutualFundStore();
-    const { totalUsdValue } = useWalletStore();
     const [activeFilter, setActiveFilter] = useState("1M");
-
-    // ✅ FIX: Fetch live USD/INR rate from CoinGecko (same as SummaryCards)
-    // instead of using a hardcoded fallback of 83.5 which caused the discrepancy.
-    const [rate, setRate] = useState(83.5); // fallback default while fetching
-    const [view, setView] = useState("total"); // "total" | "split"
-
-    useEffect(() => {
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=inr')
-            .then(res => res.json())
-            .then(data => setRate(data.tether.inr))
-            .catch(err => console.error('Rate fetch failed, using fallback rate', err));
-    }, []);
 
     const filterDays = FILTERS.find(f => f.label === activeFilter)?.days ?? 30;
 
-    // Compute today's gains
+    const chartData = useMemo(() => {
+        const points = generateDataPoints(mutualFunds, filterDays);
+        return samplePoints(points, filterDays).map((p) => ({
+            ...p,
+            label: formatDateLabel(p.date, filterDays),
+        }));
+    }, [mutualFunds, filterDays]);
+
+    // Today's MF values (only asset left)
     const mfInvested = mutualFunds.reduce((s, f) => s + (parseFloat(f.invested_amount) || 0), 0);
     const mfCurrent = mutualFunds.reduce((s, f) => {
         const units = parseFloat(f.units) || 0;
@@ -154,19 +117,23 @@ const PortfolioGrowthChart = () => {
     }, 0);
     const mfGainToday = mfCurrent - mfInvested;
 
-    const minGain = Math.min(...chartData.map(p => p.totalGain));
-    const maxGain = Math.max(...chartData.map(p => p.totalGain));
+    const totalInvested = mfInvested;
+    const totalGainToday = mfGainToday;
+    const totalReturnPct = mfInvested > 0 ? ((mfGainToday / mfInvested) * 100).toFixed(2) : "0.00";
+    const isPositive = totalGainToday >= 0;
+
+    const minGain = Math.min(...chartData.map(p => p.totalGain), 0);
+    const maxGain = Math.max(...chartData.map(p => p.totalGain), 0);
     const yPadding = Math.max(500, (maxGain - minGain) * 0.15);
 
     const gradientId = isPositive ? "gainGradient" : "lossGradient";
 
     return (
         <div className="bg-white border border-gray-200 rounded-xl p-6">
-            {/* Header row */}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                 <div>
                     <h2 className="text-xl font-bold text-gray-900">Portfolio Gain</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">Estimated daily gain across all investments</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Estimated daily gain across your mutual funds</p>
                     <div className="mt-3 flex items-baseline gap-2">
                         <span className={`text-3xl font-bold ${isPositive ? "text-green-600" : "text-red-600"}`}>
                             {isPositive ? "+" : ""}₹{Math.abs(totalGainToday).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -177,42 +144,22 @@ const PortfolioGrowthChart = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-2 items-end">
-                    {/* Time filter */}
-                    <div className="flex bg-gray-100 rounded-lg p-1 gap-0.5">
-                        {FILTERS.map(f => (
-                            <button
-                                key={f.label}
-                                onClick={() => setActiveFilter(f.label)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeFilter === f.label
-                                    ? "bg-white text-gray-900 shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
-                                    }`}
-                            >
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Split / Total toggle */}
-                    <div className="flex bg-gray-100 rounded-lg p-1 gap-0.5">
-                        {["total", "split"].map(v => (
-                            <button
-                                key={v}
-                                onClick={() => setView(v)}
-                                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all capitalize ${view === v
-                                    ? "bg-white text-gray-900 shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
-                                    }`}
-                            >
-                                {v}
-                            </button>
-                        ))}
-                    </div>
+                <div className="flex bg-gray-100 rounded-lg p-1 gap-0.5">
+                    {FILTERS.map(f => (
+                        <button
+                            key={f.label}
+                            onClick={() => setActiveFilter(f.label)}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeFilter === f.label
+                                ? "bg-white text-gray-900 shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                                }`}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* Sub-stats */}
             <div className="flex gap-6 mb-5 text-sm">
                 <div>
                     <span className="text-gray-400 text-xs">MF Gain</span>
@@ -228,7 +175,6 @@ const PortfolioGrowthChart = () => {
                 </div>
             </div>
 
-            {/* Chart */}
             <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 10, bottom: 0 }}>
                     <defs>
@@ -239,10 +185,6 @@ const PortfolioGrowthChart = () => {
                         <linearGradient id="lossGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
                             <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="mfGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                         </linearGradient>
                     </defs>
 
@@ -265,47 +207,20 @@ const PortfolioGrowthChart = () => {
                     <Tooltip content={<CustomTooltip />} />
                     <ReferenceLine y={0} stroke="#e5e7eb" strokeDasharray="4 4" />
 
-                    {view === "total" ? (
-                        <Area
-                            type="monotone"
-                            dataKey="totalGain"
-                            stroke={isPositive ? "#22c55e" : "#ef4444"}
-                            strokeWidth={2.5}
-                            fill={`url(#${gradientId})`}
-                            dot={false}
-                            activeDot={{ r: 5, strokeWidth: 0 }}
-                        />
-                    ) : (
-                        <>
-                            <Area
-                                type="monotone"
-                                dataKey="mfGain"
-                                stroke="#3b82f6"
-                                strokeWidth={2}
-                                fill="url(#mfGradient)"
-                                dot={false}
-                                activeDot={{ r: 4, strokeWidth: 0 }}
-                                name="Mutual Funds"
-                            />
-                        </>
-                    )}
+                    <Area
+                        type="monotone"
+                        dataKey="totalGain"
+                        stroke={isPositive ? "#22c55e" : "#ef4444"}
+                        strokeWidth={2.5}
+                        fill={`url(#${gradientId})`}
+                        dot={false}
+                        activeDot={{ r: 5, strokeWidth: 0 }}
+                    />
                 </AreaChart>
             </ResponsiveContainer>
 
-            {/* Legend for split view */}
-            {view === "split" && (
-                <div className="flex gap-5 mt-3 justify-center">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
-                        Mutual Funds
-                    </div>
-                    
-                </div>
-            )}
-
             <p className="text-xs text-gray-400 mt-4 text-center">
                 * Chart uses estimated growth curves based on current NAV and purchase dates.
-                Connect a historical NAV API for precise day-by-day data.
             </p>
         </div>
     );

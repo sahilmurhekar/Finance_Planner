@@ -1,10 +1,9 @@
-//frontend/src/pages/Dashboard.jsx
+// frontend/src/pages/Dashboard.jsx
 import React, { useEffect } from "react";
 import { useDashboardStore } from "../store/useDashboardStore";
-import { useWalletStore } from "../store/useWalletStore";
 import SummaryCards from "../components/Dashboard/SummaryCards";
-import MutualFundTable from "../components/Dashboard/MutualFundTable";
 import PortfolioGrowthChart from "../components/Dashboard/PortfolioGrowthChart";
+import MutualFundTable from "../components/Dashboard/MutualFundTable";
 import { RefreshCw } from "lucide-react";
 
 const Dashboard = () => {
@@ -15,13 +14,12 @@ const Dashboard = () => {
     }, [fetchDashboardStats]);
 
     const handleRefreshAll = async () => {
-        await Promise.all([fetchDashboardStats(), fetchHoldings()]);
+        await fetchDashboardStats();
     };
 
     return (
         <div className="p-8">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
@@ -39,21 +37,17 @@ const Dashboard = () => {
                     </button>
                 </div>
 
-                {/* Summary Cards */}
                 <div className="mb-8">
-                    <SummaryCards stats={dashboardStats} />
+                    <SummaryCards />
                 </div>
 
-                {/* Portfolio Growth Chart */}
                 <div className="mb-8">
                     <PortfolioGrowthChart />
                 </div>
 
-                {/* Mutual Funds Table */}
                 <div className="mb-8">
                     <MutualFundTable />
                 </div>
-
             </div>
         </div>
     );
