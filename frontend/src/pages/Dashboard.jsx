@@ -31,10 +31,10 @@ const Dashboard = () => {
                     </div>
                     <button
                         onClick={handleRefreshAll}
-                        disabled={isLoading || walletLoading}
+                        disabled={isLoading}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium disabled:opacity-50"
                     >
-                        <RefreshCw className={`w-5 h-5 ${(isLoading || walletLoading) ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`w-5 h-5 ${(isLoading) ? "animate-spin" : ""}`} />
                         Refresh All
                     </button>
                 </div>
