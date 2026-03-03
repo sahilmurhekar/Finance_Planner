@@ -4,18 +4,15 @@ import { useDashboardStore } from "../store/useDashboardStore";
 import { useWalletStore } from "../store/useWalletStore";
 import SummaryCards from "../components/Dashboard/SummaryCards";
 import MutualFundTable from "../components/Dashboard/MutualFundTable";
-import BinancePortfolio from "../components/Dashboard/BinancePortfolio";
 import PortfolioGrowthChart from "../components/Dashboard/PortfolioGrowthChart";
 import { RefreshCw } from "lucide-react";
 
 const Dashboard = () => {
     const { dashboardStats, isLoading, fetchDashboardStats } = useDashboardStore();
-    const { isLoading: walletLoading, fetchHoldings } = useWalletStore();
 
     useEffect(() => {
         fetchDashboardStats();
-        fetchHoldings();
-    }, [fetchDashboardStats, fetchHoldings]);
+    }, [fetchDashboardStats]);
 
     const handleRefreshAll = async () => {
         await Promise.all([fetchDashboardStats(), fetchHoldings()]);
@@ -57,10 +54,6 @@ const Dashboard = () => {
                     <MutualFundTable />
                 </div>
 
-                {/* Binance Portfolio */}
-                <div className="mb-8">
-                    <BinancePortfolio />
-                </div>
             </div>
         </div>
     );

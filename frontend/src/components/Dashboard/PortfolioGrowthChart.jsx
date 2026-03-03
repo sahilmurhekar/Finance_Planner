@@ -66,14 +66,7 @@ function generateDataPoints(funds, binanceGainToday, days) {
             }
         });
 
-        // Binance gain: scale linearly over the period
-        const binanceProgress = Math.min(1, (days - i) / days);
-        const binanceEased = binanceProgress < 0.5
-            ? 2 * binanceProgress * binanceProgress
-            : 1 - Math.pow(-2 * binanceProgress + 2, 2) / 2;
-        const binanceGain = binanceGainToday * binanceEased;
-
-        const totalGain = mfGain + binanceGain;
+        const totalGain = mfGain;
 
         points.push({
             date: dayLabel,
@@ -222,8 +215,8 @@ const PortfolioGrowthChart = () => {
                                 key={f.label}
                                 onClick={() => setActiveFilter(f.label)}
                                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeFilter === f.label
-                                        ? "bg-white text-gray-900 shadow-sm"
-                                        : "text-gray-500 hover:text-gray-700"
+                                    ? "bg-white text-gray-900 shadow-sm"
+                                    : "text-gray-500 hover:text-gray-700"
                                     }`}
                             >
                                 {f.label}
@@ -238,8 +231,8 @@ const PortfolioGrowthChart = () => {
                                 key={v}
                                 onClick={() => setView(v)}
                                 className={`px-3 py-1 rounded-md text-xs font-semibold transition-all capitalize ${view === v
-                                        ? "bg-white text-gray-900 shadow-sm"
-                                        : "text-gray-500 hover:text-gray-700"
+                                    ? "bg-white text-gray-900 shadow-sm"
+                                    : "text-gray-500 hover:text-gray-700"
                                     }`}
                             >
                                 {v}
