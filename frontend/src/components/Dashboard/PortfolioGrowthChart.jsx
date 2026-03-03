@@ -28,7 +28,7 @@ const FILTERS = [
  * each fund's purchase_date to today, simulating a smooth growth curve.
  * In production you'd replace this with real historical NAV data from your backend.
  */
-function generateDataPoints(funds, binanceGainToday, days) {
+function generateDataPoints(funds, days) {
     const today = new Date();
     const points = [];
 
@@ -71,7 +71,6 @@ function generateDataPoints(funds, binanceGainToday, days) {
         points.push({
             date: dayLabel,
             mfGain: parseFloat(mfGain.toFixed(2)),
-            binanceGain: parseFloat(binanceGain.toFixed(2)),
             totalGain: parseFloat(totalGain.toFixed(2)),
         });
     }
@@ -104,7 +103,6 @@ const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
     const total = payload.find(p => p.dataKey === "totalGain");
     const mf = payload.find(p => p.dataKey === "mfGain");
-    const bin = payload.find(p => p.dataKey === "binanceGain");
     const isPos = (total?.value ?? 0) >= 0;
 
     return (
@@ -122,10 +120,7 @@ const CustomTooltip = ({ active, payload, label }) => {
                     <span className="text-blue-400 text-xs">Mutual Funds</span>
                     <span className="text-xs font-medium">₹{(mf?.value ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex justify-between gap-4">
-                    <span className="text-yellow-400 text-xs">Binance</span>
-                    <span className="text-xs font-medium">₹{(bin?.value ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                </div>
+                
             </div>
         </div>
     );
@@ -158,31 +153,6 @@ const PortfolioGrowthChart = () => {
         return s + units * nav;
     }, 0);
     const mfGainToday = mfCurrent - mfInvested;
-
-    const binanceCurrent = totalUsdValue * rate;
-    const binanceInvested = (() => {
-        const stored = JSON.parse(localStorage.getItem("binanceInvested") || "{}");
-        return Object.values(stored).reduce((s, v) => s + parseFloat(v || 0), 0);
-    })();
-    const binanceGainToday = binanceCurrent - binanceInvested;
-
-    const totalGainToday = mfGainToday + binanceGainToday;
-    const totalInvested = mfInvested + binanceInvested;
-    const totalReturnPct = totalInvested > 0 ? ((totalGainToday / totalInvested) * 100).toFixed(2) : "0.00";
-    const isPositive = totalGainToday >= 0;
-
-    const rawPoints = useMemo(
-        () => generateDataPoints(mutualFunds, binanceGainToday, filterDays),
-        [mutualFunds, binanceGainToday, filterDays]
-    );
-
-    const chartData = useMemo(() => {
-        const sampled = samplePoints(rawPoints, filterDays);
-        return sampled.map(p => ({
-            ...p,
-            label: formatDateLabel(p.date, filterDays),
-        }));
-    }, [rawPoints, filterDays]);
 
     const minGain = Math.min(...chartData.map(p => p.totalGain));
     const maxGain = Math.max(...chartData.map(p => p.totalGain));
@@ -251,12 +221,6 @@ const PortfolioGrowthChart = () => {
                     </p>
                 </div>
                 <div>
-                    <span className="text-gray-400 text-xs">Binance Gain</span>
-                    <p className={`font-semibold ${binanceGainToday >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {binanceGainToday >= 0 ? "+" : ""}₹{Math.abs(binanceGainToday).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </p>
-                </div>
-                <div>
                     <span className="text-gray-400 text-xs">Total Invested</span>
                     <p className="font-semibold text-gray-700">
                         ₹{totalInvested.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -279,10 +243,6 @@ const PortfolioGrowthChart = () => {
                         <linearGradient id="mfGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
                             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="binGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15} />
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                         </linearGradient>
                     </defs>
 
@@ -327,16 +287,6 @@ const PortfolioGrowthChart = () => {
                                 activeDot={{ r: 4, strokeWidth: 0 }}
                                 name="Mutual Funds"
                             />
-                            <Area
-                                type="monotone"
-                                dataKey="binanceGain"
-                                stroke="#f59e0b"
-                                strokeWidth={2}
-                                fill="url(#binGradient)"
-                                dot={false}
-                                activeDot={{ r: 4, strokeWidth: 0 }}
-                                name="Binance"
-                            />
                         </>
                     )}
                 </AreaChart>
@@ -349,10 +299,7 @@ const PortfolioGrowthChart = () => {
                         <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
                         Mutual Funds
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" />
-                        Binance
-                    </div>
+                    
                 </div>
             )}
 
