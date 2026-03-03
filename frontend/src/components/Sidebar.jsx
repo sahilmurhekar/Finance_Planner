@@ -17,11 +17,6 @@ const navItems = [
         icon: LayoutDashboard
     },
     {
-        path: '/wallet',
-        label: 'Wallet',
-        icon: WalletIcon
-    },
-    {
         path: '/personal',
         label: 'Personal',
         icon: User
